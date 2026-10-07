@@ -23,6 +23,8 @@ class GameEngine:
         self.misses = 0
         self.score = 0
         self.font = pygame.font.SysFont("Arial", 26)
+        self.title_font = pygame.font.SysFont("Arial", 44, bold=True)
+        self.subtitle_font = pygame.font.SysFont("Arial", 22)
         self.game_over = False
 
     def _spawn_target(self):
@@ -32,6 +34,7 @@ class GameEngine:
 
     def handle_event(self, event):
         if self.game_over:
+            # Gracefully wait for input on game over screen
             return
         if event.type == pygame.MOUSEBUTTONDOWN:
             self._handle_click(event.pos)
@@ -70,7 +73,38 @@ class GameEngine:
             return 0.0
         return round(100 * self.hits / total, 1)
 
+    def _render_game_over(self, screen):
+        # Semi-transparent backdrop
+        overlay = pygame.Surface((self.width, self.height))
+        overlay.set_alpha(230)
+        overlay.fill((25, 25, 30))
+        screen.blit(overlay, (0, 0))
+
+        # Title
+        title_surf = self.title_font.render("GAME OVER", True, RED)
+        title_rect = title_surf.get_rect(center=(self.width // 2, 130))
+        screen.blit(title_surf, title_rect)
+
+        # Final score & accuracy
+        score_surf = self.font.render(f"Final Score: {self.score}", True, WHITE)
+        score_rect = score_surf.get_rect(center=(self.width // 2, 210))
+        screen.blit(score_surf, score_rect)
+
+        acc_surf = self.font.render(f"Final Accuracy: {self.accuracy()}%", True, WHITE)
+        acc_rect = acc_surf.get_rect(center=(self.width // 2, 260))
+        screen.blit(acc_surf, acc_rect)
+
+        stats_surf = self.subtitle_font.render(
+            f"Hits: {self.hits}    |    Misses: {self.misses}", True, (180, 180, 185)
+        )
+        stats_rect = stats_surf.get_rect(center=(self.width // 2, 310))
+        screen.blit(stats_surf, stats_rect)
+
     def render(self, screen):
+        if self.game_over:
+            self._render_game_over(screen)
+            return
+
         r = int(self.target.visual_radius())
         pygame.draw.circle(screen, RED, (self.target.x, self.target.y), r)
         pygame.draw.circle(screen, WHITE, (self.target.x, self.target.y), r, 2)
@@ -85,7 +119,3 @@ class GameEngine:
         acc_text = self.font.render(f"Accuracy: {self.accuracy()}%", True, WHITE)
         screen.blit(acc_text, (self.width // 2 - 90, 10))
 
-        if self.game_over and not getattr(self, "_game_over_logged", False):
-            # NOTE: no proper game-over screen yet - see Task 2 in the README.
-            print(f"Time's up! Final score: {self.score}  Accuracy: {self.accuracy()}%")
-            self._game_over_logged = True
