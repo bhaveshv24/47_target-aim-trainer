@@ -1,5 +1,6 @@
-import pygame
+import os
 import random
+import pygame
 from .target import Target
 
 # Game Engine
@@ -36,6 +37,19 @@ class GameEngine:
         self.hint_font = pygame.font.SysFont("Arial", 15)
         self.game_over = False
 
+        # Load sound feedback effects
+        sounds_dir = os.path.join(os.path.dirname(__file__), "..", "sounds")
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            self.hit_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "hit.wav"))
+            self.miss_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "miss.wav"))
+            self.round_end_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "round_end.wav"))
+        except Exception:
+            self.hit_sound = None
+            self.miss_sound = None
+            self.round_end_sound = None
+
         # Setup buttons for Game Over screen
         btn_y = 355
         btn_w = 120
@@ -46,6 +60,14 @@ class GameEngine:
         self.btn_medium_rect = pygame.Rect(start_x + btn_w + spacing, btn_y, btn_w, btn_h)
         self.btn_hard_rect = pygame.Rect(start_x + 2 * (btn_w + spacing), btn_y, btn_w, btn_h)
         self.btn_exit_rect = pygame.Rect(start_x + 3 * (btn_w + spacing), btn_y, btn_w, btn_h)
+
+    def _play_sound(self, sound):
+        if sound:
+            try:
+                sound.play()
+            except Exception:
+                pass
+
 
     def _spawn_target(self):
         config = self.DIFFICULTIES.get(self.current_difficulty, self.DIFFICULTIES["Medium"])
@@ -100,9 +122,11 @@ class GameEngine:
         if self.target.contains_point(x, y):
             self.hits += 1
             self.score += 1
+            self._play_sound(self.hit_sound)
             self.target = self._spawn_target()
         else:
             self.misses += 1
+            self._play_sound(self.miss_sound)
 
     def handle_input(self):
         # Reserved for continuously-held-key input; this game is
@@ -116,12 +140,15 @@ class GameEngine:
         self.time_left_frames -= 1
         if self.time_left_frames <= 0:
             self.game_over = True
+            self._play_sound(self.round_end_sound)
             return
 
         self.target.update()
         if self.target.expired():
             self.misses += 1  # letting a target time out counts as a miss too
+            self._play_sound(self.miss_sound)
             self.target = self._spawn_target()
+
 
     def accuracy(self):
         total = self.hits + self.misses
